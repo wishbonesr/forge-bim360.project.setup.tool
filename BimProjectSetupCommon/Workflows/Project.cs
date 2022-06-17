@@ -101,6 +101,10 @@ namespace BimProjectSetupCommon.Workflow
                 CsvExporter.ExportProjectsCsv(bimProjects);
             }
         }
+        public void ExportProjectsToCsv()
+        {
+            ExportProjectsToCsv(true, GetAllProjects());
+        }
 
         public List<BimProject> GetAllProjects()
         {

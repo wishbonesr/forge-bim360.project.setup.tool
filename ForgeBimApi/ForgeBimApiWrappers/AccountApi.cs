@@ -96,7 +96,25 @@ namespace Autodesk.Forge.BIM360
             IRestResponse response = ExecuteRequest(request);
             return response;
         }
+        public IRestResponse PatchUser(UpUser user)
+        {
+            var request = new RestRequest(Method.PATCH);
+            request.Resource = Urls["users_patch"];
 
+            request.AddParameter("AccountId", options.ForgeBimAccountId, ParameterType.UrlSegment);
+            request.AddParameter("UserId", user.id, ParameterType.UrlSegment);
+            JsonSerializerSettings settings = new JsonSerializerSettings();
+            settings.DateFormatString = "yyyy-MM-dd";
+            settings.NullValueHandling = NullValueHandling.Ignore;
+            string projectString = JsonConvert.SerializeObject(user, settings);
+            request.AddParameter("application/json", projectString, ParameterType.RequestBody);
+
+            request.AddHeader("content-type", ContentType);
+            request.AddHeader("authorization", $"Bearer {Token}");
+            
+            IRestResponse response = ExecuteRequest(request);
+            return response;
+        }
         public IRestResponse GetCompanies(out List<BimCompany> result)
         {
             Log.Info($"Querying Companies for AccountID '{options.ForgeBimAccountId}'");

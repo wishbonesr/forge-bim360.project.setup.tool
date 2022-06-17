@@ -78,6 +78,9 @@
     <Compile Include="Serialization\Bucket.cs" />
     <Compile Include="Serialization\Buckets.cs" />
     <Compile Include="Serialization\BusinessUnit.cs" />
+    <Compile Include="Serialization\ProjectServices.cs" />
+    <Compile Include="Serialization\ProjectGetUser.cs" />
+    <Compile Include="Serialization\HqUserPatchResponse.cs" />
     <Compile Include="Serialization\Container.cs" />
     <Compile Include="Serialization\Created.cs" />
     <Compile Include="Serialization\Data.cs" />

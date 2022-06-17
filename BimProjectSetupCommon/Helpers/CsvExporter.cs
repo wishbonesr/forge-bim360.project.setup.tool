@@ -25,6 +25,7 @@ using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
 using Autodesk.Forge.BIM360.Serialization;
+using NLog;
 using System.Globalization;
 
 namespace BimProjectSetupCommon.Helpers
@@ -51,20 +52,53 @@ namespace BimProjectSetupCommon.Helpers
             {
                 rand += ((char)(rnd.Next(1, 26) + 64)).ToString();
             }
-            string path = $"{Path.GetTempPath()}{Path.DirectorySeparatorChar}{name}_{rand}.csv";
+            string path = @"c:\temp";
+            path += $"{Path.DirectorySeparatorChar}{name}_{rand}.csv";
+            //string path = $"{Path.GetTempPath()}{Path.DirectorySeparatorChar}{name}_{rand}.csv";
             System.IO.File.WriteAllText(path, csv);
             ExploreFile(path);
+        }
+        private static void OverwriteFile(string csv, string name)
+        {
+            Logger Log = LogManager.GetCurrentClassLogger();
+            string path = @"c:\temp";
+            path += $"{Path.DirectorySeparatorChar}{name}.csv";
+            Log.Info($"   " + path);
+            System.IO.File.WriteAllText(path, csv);
         }
 
         private static void AppendProperty(StringBuilder csv, PropertyInfo prop, Object o)
         {
+            //Handling API's that output ISO 8601 datetime
+            DateTime dateval = DateTime.Now;
+            bool isDate = false;
+            if (!(prop.GetValue(o) is null))
+            {
+                isDate = DateTime.TryParse(prop.GetValue(o).ToString(), null, System.Globalization.DateTimeStyles.RoundtripKind, out dateval);
+            }
+
             if (prop.PropertyType == typeof(DateTime))
             {
                 DateTime date = (DateTime)prop.GetValue(o);
-                string formatString = DefaultConfig.dateFormat;
-                string d = date != null ? date.ToString(format: formatString, provider: CultureInfo.InvariantCulture) : string.Empty;
+                //changing for date format consistency with account and projectusers export date format
+                //but keeping the additional null catch
+                //string formatString = DefaultConfig.dateFormat;
+                //string d = date != null ? date.ToString(format: formatString, provider: CultureInfo.InvariantCulture) : string.Empty;
+                string d = date != null ? date.ToString(DefaultConfig.dateFormat) : string.Empty;
                 csv.Append(d);
             }
+            //Handling API's that output ISO 8601 datetime
+            else if (isDate)
+            {
+                string d = dateval.ToString(DefaultConfig.dateFormat);
+                csv.Append(d);
+            }
+            //if wanting to output somethign more for sql, need to design a switch or setting that triggers this section
+            //otherwise commented out
+            //else if (prop.PropertyType == typeof(bool))
+            //{
+            //    csv.Append(Convert.ToByte(prop.GetValue(o)));
+            //}
             else
             {
                 csv.Append(prop.GetValue(o));
@@ -107,14 +141,20 @@ namespace BimProjectSetupCommon.Helpers
                     csv.AppendLine();
                 }
             }
-            WriteFileAndExplore(csv.ToString(), baseFileName);
+            //exchanged writefileandexplore so that other programs can 
+            //injest the content programatically
+            //WriteFileAndExplore(csv.ToString(), baseFileName);
+            OverwriteFile(csv.ToString(), baseFileName);
         }
 
         internal static void ExportProjectsCsv(List<BimProject> projects)
         {
             ExportObjectsToCsv(projects, typeof(BimProject), "BimProject");
         }
-
+        internal static void ExportProjectsCsv()
+        {
+            ExportProjectsCsv(DataController.AllProjects);
+        }
 
         internal static void ExportCompaniesCsv(List<int> arrayOfIndices)
         {
@@ -125,7 +165,136 @@ namespace BimProjectSetupCommon.Helpers
             ExportObjectsToCsv(companies, typeof(BimCompany), "BIM360_AccountCompanies");
 
         }
+        internal static void ExportCompaniesCsv(List<BimCompany> companies)
+        {
+            ExportObjectsToCsv(companies, typeof(BimCompany), "BIM360_AccountCompanies");
+        }
+        internal static void ExportCompaniesCsv()
+        {
+            ExportCompaniesCsv(DataController.Companies);
+        }
+        internal static void ExportUsersCsv()
+        {
+            List<HqUser> users = DataController.AccountUsers;
+            // Create Column Headers
+            string csv = "";
 
+            PropertyInfo[] props = typeof(HqUser).GetProperties();
+            foreach (PropertyInfo prop in props)
+            {
+                csv += prop.Name.ToString() + DefaultConfig.delimiter;
+            }
+
+            csv += Environment.NewLine;
+
+            // If Export CSV and CSV with Services buttons are clicked
+            if (users != null)
+            {
+                //create rows in CSV
+                foreach (HqUser user in users)
+                {
+                    foreach (PropertyInfo prop in props)
+                    {
+                        if (prop.Name.ToString() == "last_sign_in" || prop.Name.ToString() == "created_at" || prop.Name.ToString() == "updated_at")
+                        {
+                            try
+                            {
+                                DateTime date = (DateTime)prop.GetValue(user);
+                                string d = date.ToString(DefaultConfig.dateFormat);
+                                csv += d + DefaultConfig.delimiter.ToString();
+                                continue;
+                            }
+                            catch
+                            {
+                                csv += "error parsing date" + DefaultConfig.delimiter.ToString();
+                                continue;
+                            }
+
+                        }
+
+                        if (prop.Name.ToString() == "phone")
+                        {
+                            // Collect phone number from the nested phone object
+                            string phone_string = (string)prop.GetValue(user);
+                            try
+                            {
+                                Phone phone = JsonConvert.DeserializeObject<Phone>(phone_string);
+                                if (phone != null)
+                                    csv += phone.Number.ToString() + DefaultConfig.delimiter.ToString();
+                                else
+                                    csv += DefaultConfig.delimiter.ToString();
+                                continue;
+                            }
+                            catch
+                            {
+                                csv += phone_string + DefaultConfig.delimiter.ToString();
+                                continue;
+                            }
+                        }
+
+                        if (prop.Name.ToString() == "about_me")
+                        {
+                            string about_me = (string)prop.GetValue(user);
+                            if (about_me != null)
+                            {
+                                if (about_me.Length == 0)
+                                {
+                                    csv += DefaultConfig.delimiter.ToString();
+                                    continue;
+                                }
+
+                                if (DefaultConfig.delimiter != ',')
+                                {
+                                    csv += about_me.ToString() + DefaultConfig.delimiter.ToString();
+                                    continue;
+                                }
+
+                                csv += about_me.Replace(',', ' ') + DefaultConfig.delimiter.ToString();
+                                continue;
+                            }
+                            else
+                            {
+                                csv += DefaultConfig.delimiter.ToString();
+                                continue;
+                            }
+
+                        }
+
+                        csv += prop.GetValue(user) + DefaultConfig.delimiter.ToString();
+                    }
+                    //foreach (FieldInfo field in fields)
+                    //{
+                    //    if (field.Name.ToString() == "last_sign_in" || field.Name.ToString() == "created_at" || field.Name.ToString() == "updated_at")
+                    //    {
+                    //        DateTime date = (DateTime)field.GetValue(user);
+                    //        string d = date.ToString("yyyy-MM-dd");
+                    //        csv += d + Config.delimiter.ToString();
+                    //    }
+                    //    else
+                    //    {
+                    //        csv += field.GetValue(user) + Config.delimiter.ToString();
+                    //    }
+                    //}
+
+                    csv += Environment.NewLine;
+                }
+            }
+            //exchanged writefileandexplore so that other programs can 
+            //injest the content programatically
+            //WriteFileAndExplore(csv, "AccountUsers");
+            OverwriteFile(csv, "AccountUsers");
+            //Random rnd = new Random();
+            //int length = 20;
+            //var fileName = "";
+            //for (var i = 0; i < length; i++)
+            //{
+            //    fileName += ((char)(rnd.Next(1, 26) + 64)).ToString();
+            //}
+            //string path = @"c:\temp\BIM360_AccountUser_" + fileName + ".csv";
+
+            //System.IO.File.WriteAllText(path, csv);
+            //System.Diagnostics.Process.Start(path);
+        }
         internal static void ExportUsersCsv(List<int> arrayOfIndices)
         {
             List<HqUser> users = new List<HqUser>();
@@ -234,7 +403,7 @@ namespace BimProjectSetupCommon.Helpers
                     csv += Environment.NewLine;
                 }
             }
-
+            //WriteFileAndExplore(csv.ToString(), "AccountUsers");
             Random rnd = new Random();
             int length = 20;
             var fileName = "";
@@ -247,7 +416,118 @@ namespace BimProjectSetupCommon.Helpers
             System.IO.File.WriteAllText(path, csv);
             System.Diagnostics.Process.Start(path);
         }
+        internal static void ExportProjectUsers()
+        {
+            List<ProjectGetUser> projectUsers = DataController.ProjectUsers;
+            
+            //headers
+            string csv = "";
 
+            PropertyInfo[] props = typeof(ProjectGetUser).GetProperties();
+            foreach (PropertyInfo prop in props)
+            {
+                InclInExportAttribute att = (InclInExportAttribute)prop.GetCustomAttribute(typeof(InclInExportAttribute), false);
+                if (att != null && att.include == false)
+                    continue;
+                csv += prop.Name.ToString() + DefaultConfig.delimiter.ToString();
+            }
+            csv += Environment.NewLine;
+
+            if (projectUsers != null)
+            {
+                foreach(ProjectGetUser projectUser in projectUsers)
+                {
+                    foreach (PropertyInfo prop in props)
+                    {
+                        InclInExportAttribute att = (InclInExportAttribute)prop.GetCustomAttribute(typeof(InclInExportAttribute), false);
+                        if (att != null && att.include == false)
+                            continue;
+                        if (prop.Name.ToString() == "addedOn")
+                        {
+                            try
+                            {
+                                DateTime date = (DateTime)prop.GetValue(projectUser);
+                                string d = date.ToString(DefaultConfig.dateFormat);
+                                csv += d + DefaultConfig.delimiter.ToString();
+                                continue;
+                            }
+                            catch
+                            {
+                                csv += "error parsing date" + DefaultConfig.delimiter.ToString();
+                                continue;
+                            }
+                        }
+                        //skipping phone for now. produces jobject on some persons.
+                        //if (prop.Name.ToString() == "phone")
+                        //{
+                        //    string phone_string = (string)prop.GetValue(projectUser);
+                        //    try
+                        //    {
+                        //        Phone phone = JsonConvert.DeserializeObject<Phone>(phone_string);
+                        //        if (phone != null)
+                        //            csv += phone.Number.ToString() + DefaultConfig.delimiter.ToString();
+                        //        else
+                        //            csv += DefaultConfig.delimiter.ToString();
+                        //        continue;
+                        //    }
+                        //    catch
+                        //    {
+                        //        csv += phone_string + DefaultConfig.delimiter.ToString();
+                        //        continue;
+                        //    }
+                        //}
+                        if (prop.Name.ToString() == "aboutMe")
+                        {
+                            string about_me = (string)prop.GetValue(projectUser);
+                            if (about_me != null)
+                            {
+                                if (about_me.Length == 0)
+                                {
+                                    csv += DefaultConfig.delimiter.ToString();
+                                    continue;
+                                }
+                                if (DefaultConfig.delimiter != ',')
+                                {
+                                    csv += about_me.ToString() + DefaultConfig.delimiter.ToString();
+                                    continue;
+                                }
+                                csv += about_me.Replace(',', ' ') + DefaultConfig.delimiter.ToString();
+                                continue;
+                            }
+                            else
+                            {
+                                csv += DefaultConfig.delimiter.ToString();
+                                continue;
+                            }
+                        }
+                        if (prop.PropertyType.IsArray)
+                        {
+                            string psv = string.Join(DefaultConfig.secondDelimiter.ToString(), prop.GetValue(projectUser) as string[]);
+                            csv += psv + DefaultConfig.delimiter.ToString();
+                            continue;
+                        }
+                        csv += prop.GetValue(projectUser) + DefaultConfig.delimiter.ToString();
+                    }
+                    csv += Environment.NewLine;
+                }
+            }
+            //exchanged writefileandexplore so that other programs can 
+            //injest the content programatically
+            //WriteFileAndExplore(csv, "ProjectsUsers");
+            OverwriteFile(csv, "ProjectUsers");
+
+            //Random rnd = new Random();
+            //int length = 20;
+            //var fileName = "";
+            //for (var i = 0; i < length; i++)
+            //{
+            //    fileName += ((char)(rnd.Next(1, 26) + 64)).ToString();
+            //}
+            //string path = @"c:\temp\BIM360_ProjectUser_" + fileName + ".csv";
+
+            //System.IO.File.WriteAllText(path, csv);
+            //System.Diagnostics.Process.Start(path);
+        }
         internal static void ExportServicesCsvTemplate()
         {
             // Create Column Headers
@@ -261,7 +541,7 @@ namespace BimProjectSetupCommon.Helpers
             WriteFileAndExplore(csv.ToString(), "BIM360_Service_Template");
         }
 
-        internal static void ExportUsersCsvTemplate()
+        internal static void ExportProjectUsersCsvTemplate()
         {
             // Create Column Headers
             StringBuilder csv = new StringBuilder();

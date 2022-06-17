@@ -61,6 +61,32 @@ namespace Autodesk.BimProjectSetup
         }
         public void Process()
         {
+            //the following -o switch was added, but too may overloads were needed
+            //to get the options to the csvexporter    
+            //if (options.ExportPath != null)
+            //{
+            if (true == options.ExportUsers)
+                {
+                    Log.Info($"");
+                    Log.Info($"Writing Export File for Account Users");
+                    Log.Info($"");
+                    accountProcess.ExportUsersCsv();
+                }
+                if (true == options.ExportProjects)
+                {
+                    Log.Info($"");
+                    Log.Info($"Writing Export File for Projects List");
+                    Log.Info($"");
+                    projectProcess.ExportProjectsToCsv();
+                }
+                if (true == options.ExportProjectUsers)
+                {
+                    Log.Info($"");
+                    Log.Info($"Writing Export File for Project Users");
+                    Log.Info($"");
+                    projectUserProcess.ExportUsersCsv();
+                }
+            //}
             if (options.FilePath != null)
             {
                 if (options.CopyFolders)
@@ -76,24 +102,39 @@ namespace Autodesk.BimProjectSetup
             {
                 serviceProcess.ActivateServicesProcess();
             }
-            if (options.ProjectUserFilePath != null)
+            if (options.UserFilePath != null)
             {
                 if (options.UpdateProjectUsers)
                 {
                     projectUserProcess.UpdateProjectUsersFromCsvProcess();
                 }
-                else
+                else if (options.AddProjectUsers)
                 {
                     projectUserProcess.AddProjectUsersFromCsvProcess();
+                }
+                else if (options.UpdateAccountUsers)
+                {
+                    accountProcess.UpdateUsersFromCsv();
+                }
+                else if (options.AddAccountUsers)
+                {
+                    accountProcess.AddUsersFromCsv();
+                }
+                else 
+                {
+                    Console.WriteLine("Arg [-u] must be used with one of the following [AA] [AP] [UP] [UA]");
+                    Console.WriteLine("");
+                    PrintHelp();
                 }
             }
         }
         internal static void PrintHelp()
         {
-            Console.WriteLine("Usage: Autodesk.BimProjectSetup [-p] [-x] [-u] [-c] [-s] [-a] [-b] [-t] [-z] [-e] [-d] [-r] [-h] [--CF] [--EU] [--UP]");
+            Console.WriteLine("Usage: Autodesk.BimProjectSetup [-o] [-p] [-x] [-u] [-c] [-s] [-a] [-b] [-t] [-z] [-e] [-d] [-r] [-h] [--CF] [--EU] [--UP]");
+            Console.WriteLine("  -o        Output path for exports");
             Console.WriteLine("  -p        Path to CSV input file for project creation");
             Console.WriteLine("  -x        Path to CSV input file for service activation");
-            Console.WriteLine("  -u        Path to CSV input file with project user information");
+            Console.WriteLine("  -u        Path to CSV input file with user information (account or project - see respective templates");
             Console.WriteLine("  -c        Forge client ID");
             Console.WriteLine("  -s        Forge client secret");
             Console.WriteLine("  -a        BIM 360 Account ID");
@@ -106,8 +147,15 @@ namespace Autodesk.BimProjectSetup
             Console.WriteLine("  -h        Email address of the BIM 360 Account admin");
             // Switches
             Console.WriteLine("  --CF      Copy folders");
+            Console.WriteLine("  --AR      Admin Industry Role");
             Console.WriteLine("  --EU      Use the EU region account");
+            Console.WriteLine("  --AP      Add Project Users Access, Companies, or Roles");
+            Console.WriteLine("  --AA      Add Account Users Access, Companies, or Roles");
             Console.WriteLine("  --UP      Update Project User Access, Companies, or Roles");
+			Console.WriteLine("  --UA      Update Account User Access, Companies, or Roles");
+            Console.WriteLine("  --UE      Users Export");
+            Console.WriteLine("  --PUE     Projects Users Export");
+            Console.WriteLine("  --PE      Projects List Export");
             Console.WriteLine("At least one path to an input file must be provided with the -p or -x options");
         }
         internal static void PrintHeader()

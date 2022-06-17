@@ -43,13 +43,28 @@ namespace BimProjectSetupCommon.Workflow
         public void AddUsersFromCsv()
         {
             Log.Info($"");
-            Log.Info($"Updating users...");
+            Log.Info($"Adding user accounts...");
 
             DataController._accountUserTable = CsvReader.ReadDataFromCSV(DataController._accountUserTable, DataController._options.AccountUserFilePath);
             List<HqUser> users = UserTableToList(DataController._accountUserTable);
             DataController.AddAccountUsers(users);
         }
+        public void UpdateUsersFromCsv()
+        {
+			Log.Info($"");
+			Log.Info($"Updating user accounts...");
+            DataController._accountUserTable = CsvReader.ReadDataFromCSV(DataController._accountUserTable, DataController._options.AccountUserFilePath);
 
+            if (false == _options.TrialRun)
+            {
+                List<UpUser> users = UserUpdateTableToList(DataController._accountUserTable);
+                DataController.UpdateAccountUsers(users);
+            }
+            else
+            {
+                Log.Info("-Trial run (-r option is true) - no further processing");
+            }
+        }
         public List<BimCompany> GetCompanies()
         {
             return DataController.Companies;
@@ -58,7 +73,6 @@ namespace BimProjectSetupCommon.Workflow
         {
             return DataController.AccountUsers;
         }
-
         private List<BimCompany> CompanyTableToList(DataTable input)
         {
             List<BimCompany> companies = new List<BimCompany>();
@@ -113,11 +127,28 @@ namespace BimProjectSetupCommon.Workflow
             }
             return users;
         }
+        private List<UpUser> UserUpdateTableToList(DataTable input)
+        {
+            List<UpUser> users = new List<UpUser>();
+            foreach (DataRow row in input.Rows)
+            {
+                UpUser user = new UpUser();
+                user.email = Util.GetStringOrNull(row["email"]);
+                user.status = Util.GetStringOrNull(row["status"]);
+
+                users.Add(user);
+            }
+            return users;
+        }
 
         #region CSV export
         public void ExportCompaniesCsv(List<int> arrayOfIndices)
         {
             CsvExporter.ExportCompaniesCsv(arrayOfIndices);
+        }
+        public void ExportUsersCsv()
+        {
+            CsvExporter.ExportUsersCsv();
         }
         public void ExportUsersCsv(List<int> arrayOfIndices)
         {

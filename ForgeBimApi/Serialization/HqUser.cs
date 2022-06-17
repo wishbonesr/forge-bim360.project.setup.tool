@@ -41,4 +41,14 @@ namespace Autodesk.Forge.BIM360.Serialization
 
         public string phone { get; set; }
     }
+
+    public class UpUser
+    {
+        [JsonIgnore]
+        public string id { get; set; }
+        [JsonIgnore]
+        public string email { get; set; }
+        public string company_id { get; set; }
+        public string status { get; set; }
+    }
 }

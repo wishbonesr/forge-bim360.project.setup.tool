@@ -40,13 +40,14 @@ namespace BimProjectSetupCommon.Workflow
             _projectsApi = new BimProjectsApi(GetToken, _options);
             DataController.InitializeAllProjects();
             DataController.InitializeAccountUsers();
+            DataController.InitializeProjectUsers();
         }
 
         public void AddProjectUsersFromCsvProcess()
         {
             try
             {
-                DataController._projcetUserTable = CsvReader.ReadDataFromCSV(DataController._projcetUserTable, DataController._options.ProjectUserFilePath);
+                DataController._projcetUserTable = CsvReader.ReadDataFromCSV(DataController._projcetUserTable, DataController._options.UserFilePath);
 
                 if (false == _options.TrialRun)
                 {
@@ -102,7 +103,7 @@ namespace BimProjectSetupCommon.Workflow
         {
             try
             {
-                DataController._projcetUserTable = CsvReader.ReadDataFromCSV(DataController._projcetUserTable, DataController._options.ProjectUserFilePath);
+                DataController._projcetUserTable = CsvReader.ReadDataFromCSV(DataController._projcetUserTable, DataController._options.UserFilePath);
 
                 if (false == _options.TrialRun)
                 {
@@ -480,7 +481,7 @@ namespace BimProjectSetupCommon.Workflow
         #region CSV Export
         public void ExportUsersCsv()
         {
-            CsvExporter.ExportUsersCsvTemplate();
+            CsvExporter.ExportProjectUsers();
         }
         #endregion
     }

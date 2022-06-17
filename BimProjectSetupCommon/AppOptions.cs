@@ -26,9 +26,10 @@ namespace BimProjectSetupCommon
 {
     public class AppOptions : ApplicationOptions
     {
+        public string ExportPath { get; set; }
         public string FilePath { get; set; }
         public string ServiceFilePath { get; set; }
-        public string ProjectUserFilePath { get; set; }
+        public string UserFilePath { get; set; }
         public string CompanyFilePath { get; set; }
         public string AccountUserFilePath { get; set; }
         public string ForgeClientId { get; private set; }
@@ -95,6 +96,14 @@ namespace BimProjectSetupCommon
                 DefaultConfig.adminRole = value;
             }
         }
+        public bool ExportUsers { get; private set; }
+        public bool ExportProjects { get; private set; }
+        public bool UpdateAccountUsers { get; private set; }
+        public bool ExportProjectUsers { get; private set; }
+        public bool AddProjectUsers { get; private set; }
+        public bool AddAccountUsers { get; private set; }
+        public bool Test { get; private set; }
+
         internal AppOptions()
         {
             ForgeClientId = Environment.GetEnvironmentVariable("FORGE_CLIENT_ID") ?? "your_client_id";
@@ -114,7 +123,15 @@ namespace BimProjectSetupCommon
             for (int i = 0; i < args.Length; i++)
             {
                 string arg = args[i];
-
+                //the following -o switch was added, but too may overloads were needed
+                //to get the options to the csvexporter
+                if (arg.Equals ("-o", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    //ensure there is no trailing slash
+                    int lastSlash = args[i].LastIndexOf('/');
+                    options.ExportPath = (lastSlash > -1) ? args[i].Substring(0, lastSlash) : args[i];
+                    ++i;
+                }
                 if (arg.Equals("-p", StringComparison.InvariantCultureIgnoreCase))
                 {
                     options.FilePath = args[++i];
@@ -125,7 +142,8 @@ namespace BimProjectSetupCommon
                 }
                 else if (arg.Equals("-u", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    options.ProjectUserFilePath = args[++i];
+                    options.UserFilePath = args[++i];
+                    if ((options.AddAccountUsers || options.UpdateAccountUsers) && options.AccountUserFilePath is null) options.AccountUserFilePath = options.UserFilePath;
                 }
                 else if (arg.Equals("-c", StringComparison.InvariantCultureIgnoreCase))
                 {
@@ -177,6 +195,12 @@ namespace BimProjectSetupCommon
                 else if (arg.Equals("--UP", StringComparison.InvariantCultureIgnoreCase))
                 {
                     options.UpdateProjectUsers = true;
+                    if (options.AccountUserFilePath is null) options.AccountUserFilePath = options.UserFilePath;
+                }
+                else if (arg.Equals("--UA", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    options.UpdateAccountUsers = true;
+                    if (options.AccountUserFilePath is null) options.AccountUserFilePath = options.UserFilePath;
                 }
                 else if (arg.Equals("--AR", StringComparison.InvariantCultureIgnoreCase))
                 {
@@ -186,6 +210,31 @@ namespace BimProjectSetupCommon
                 {
                     options.AccountRegion = args[i].Remove(0, 2);
                     ++i;
+                }
+                else if (arg.Equals("--UE", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    options.ExportUsers = true;
+                }
+                else if (arg.Equals("--PUE", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    options.ExportProjectUsers = true;
+                }
+                else if (arg.Equals("--PE", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    options.ExportProjects = true;
+                }
+                else if (arg.Equals("--AP", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    options.AddProjectUsers = true;
+                }
+                else if (arg.Equals("--AA", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    options.AddAccountUsers = true;
+                    if (options.AccountUserFilePath is null) options.AccountUserFilePath = options.UserFilePath;
+                }
+                else if (arg.Equals("--TEST", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    options.Test = true;
                 }
             }
 

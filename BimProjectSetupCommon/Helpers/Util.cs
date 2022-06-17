@@ -44,6 +44,7 @@ namespace BimProjectSetupCommon.Helpers
         internal static string GetStringOrNull(object value)
         {
             string s = null;
+            if (value == null) return null;
             s = Convert.ToString(value);
             {
                 if (string.IsNullOrEmpty(s)) s = null;

@@ -81,6 +81,16 @@ namespace BimProjectSetupCommon
                 return _AccountUsers;
             }
         }
+        private static List<ProjectGetUser> _ProjectUsers = null;
+        public static List<ProjectGetUser> ProjectUsers
+        {
+            get
+            {
+                InitializeProjectUsers();
+                if (_ProjectUsers != null) _ProjectUsers = _ProjectUsers.OrderBy(x => x.lastName).ToList();
+                return _ProjectUsers;
+            }
+        }
         private static List<BusinessUnit> _BusinessUnits = null;
         public static List<BusinessUnit> BusinessUnits
         {
@@ -148,6 +158,16 @@ namespace BimProjectSetupCommon
             if (_AccountUsers == null || _AccountUsers.Count < 1)
             {
                 _AccountUsers = GetAccountUsers();
+            }
+        }
+        internal static void InitializeProjectUsers()
+        {
+            if (_ProjectUsers == null || _ProjectUsers.Count < 1)
+            {
+                if (_AllProjects != null && _AllProjects.Count > 0)
+                {
+                    _ProjectUsers = GetProjectUsers();
+                }
             }
         }
         internal static void InitializeHubs()
@@ -438,6 +458,24 @@ namespace BimProjectSetupCommon
             _userApi.GetAccountUsers(out result);
             return result;
         }
+        private static List<ProjectGetUser> GetProjectUsers()
+        {
+            if (_options ==null)
+            {
+                return null;
+            }
+
+            BimProjectsApi _projectsApi = new BimProjectsApi(GetToken, _options);
+            List<ProjectGetUser> projectUsers = new List<ProjectGetUser>();
+            List<ProjectGetUser> result = new List<ProjectGetUser>();
+            foreach (BimProject project in AllProjects)
+            {
+                _projectsApi.GetProjectUsers(project.id, out result);
+                result.All(p => { p.projectId = project.id; p.projectName = project.name; return true; });
+                projectUsers.AddRange(result);
+            }
+            return projectUsers;
+        }
         internal static List<HqUser> GetAccountUsers(string accountId)
         {
             if (_options == null)
@@ -619,9 +657,56 @@ namespace BimProjectSetupCommon
         }
         public static void AddAccountUsers(List<HqUser> users)
         {
+            if (users == null || users.Count < 1) return;
+
+            Log.Info($"");
+            Log.Info($"Start adding new Accounts");
+            users = users.OrderBy(x => x.full_name).ToList();
             AccountApi _usersApi = new AccountApi(GetToken, _options);
-            IRestResponse response = _usersApi.PostUsers(users);
-            HandleAddUsersResponse(response);
+            if (users.Count() < 50)
+            {
+                IRestResponse response = _usersApi.PostUsers(users);
+                HandleAddUsersResponse(response);
+            }
+            else if (users.Count() >= 50)
+            {
+                IEnumerable<List<HqUser>> chunks = Util.SplitList(users.ToList());
+                foreach (List<HqUser> list in chunks)
+                {
+                    IRestResponse response = _usersApi.PostUsers(list);
+                    HandleAddUsersResponse(response);
+                }
+            }
+            
+        }
+        public static void UpdateAccountUsers(List<UpUser> users)
+        {
+            if (users == null || users.Count < 1)
+            {
+                return;
+            }
+
+            Log.Info($"");
+            Log.Info($"Start updating user accounts");
+            AccountApi _usersApi = new AccountApi(GetToken, _options);
+            foreach (UpUser user in users)
+            {
+                HqUser hquser = new HqUser();
+                if (CheckUserId(user.email, out hquser))
+                {
+                    user.id = hquser.id;
+                    Log.Info($"- updating account {user.email}");
+                    IRestResponse response = _usersApi.PatchUser(user);
+                    HandleUpdateUsersResponse(response);
+                }
+                else
+                {
+                    Log.Error($"User {user.email} does not exist. Must create account before editing");
+                }
+            }
+            
+            
+            
         }
         #endregion
 
@@ -688,6 +773,41 @@ namespace BimProjectSetupCommon
                 }
                 _AccountUsers = _AccountUsers.OrderBy(x => x.full_name).ToList();
             }
+        }
+        internal static void HandleUpdateUsersResponse(IRestResponse response)
+        {
+            LogResponse(response);
+            //ResponseContent content = null;
+            if (response.StatusCode == System.Net.HttpStatusCode.OK)
+            {
+                HqUpdateUserResponse r = JsonConvert.DeserializeObject<HqUpdateUserResponse>(response.Content);
+                if (r != null)
+                {
+                    if (r.error == null)
+                    {
+                        Log.Info($"Successfully updated account: {r.email}");
+                    }
+                    else
+                    {
+                        Log.Error($"Error when updating account");
+                        foreach (var e in r.error)
+                        {
+                            Log.Error($"code:{e.code}  message:{e.message}");
+                        }
+                    }
+                }
+            }
+//needs a fresh look at deserializing an error into HQUpdateUserResponse
+            //else
+            //{
+            //    //imitate HandleUpdateProjectResponse for UI integration
+            //    HqUpdateUserResponse r = JsonConvert.DeserializeObject<HqUpdateUserResponse>(response.Content);
+            //    Log.Info($"Error encountered while updating user");
+            //    foreach (var e in r.error)
+            //    {
+            //        Log.Error($"code:{e.code}  message:{e.message}");
+            //    }
+            //}
         }
         internal static BimProject HandleGetProjectResponse(IRestResponse response)
         {
@@ -776,5 +896,17 @@ namespace BimProjectSetupCommon
             }
         }
         #endregion
+        private static bool CheckUserId(string email, out HqUser HqUser)
+        {
+            HqUser = DataController.AccountUsers.FirstOrDefault(u =>
+                u.email != null && u.email.Equals(email, StringComparison.InvariantCultureIgnoreCase));
+            if (HqUser == null)
+            {
+                Log.Error($"Error initializing account user {email}");
+                return false;
+            }
+
+            return true;
+        }
     }
 }

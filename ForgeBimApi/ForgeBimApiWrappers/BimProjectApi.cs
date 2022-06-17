@@ -18,6 +18,7 @@
 
 using Autodesk.Forge.BIM360.Serialization;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using RestSharp;
 using System;
 using System.Collections.Generic;
@@ -266,6 +267,58 @@ namespace Autodesk.Forge.BIM360
                 Log.Error(ex);
                 throw ex;
             }
+
+            return response;
+        }
+
+        public IRestResponse GetProjectUsers(string projectId, out List<ProjectGetUser> result, int limit = 100, int offset = 0)
+        {
+            Log.Info($"Querying Project Users from AccountID '{options.ForgeBimAccountId}' : ProjectID '{projectId}");
+            result = new List<ProjectGetUser>();
+            List<ProjectGetUser> projectUsers;
+            IRestResponse response = null;
+            do
+            {
+                projectUsers = null;
+                try
+                {
+                    var request = new RestRequest(Method.GET);
+                    //request.Resource = "bim360/admin/v1/projects/{projectId}/users"; -->  according to the documentation 2022
+                    //original source looks like:
+                    //Urls["projects_projectId_users"] = "hq/v1/" + regionBasedUrl + "accounts/{AccountId}/projects/{ProjectId}/users";
+                    //documentation indicates no account id is used - only the project id...
+                    request.Resource = Urls["projects_projectId_getusers"];
+                    //if the source code url is correct, then the following accountid replacement is necessary
+                    //otherwise, remove
+                    //request.AddParameter("AccountId", options.ForgeBimAccountId, ParameterType.UrlSegment);
+                    request.AddParameter("ProjectId", projectId, ParameterType.UrlSegment);
+                    request.AddHeader("authorization", $"Bearer {Token}");
+                    request.AddParameter("limit", limit, ParameterType.QueryString);
+                    request.AddParameter("offset", offset, ParameterType.QueryString);
+
+                    response = ExecuteRequest(request);
+
+
+                    if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                    {
+                        var details = JObject.Parse(response.Content);
+                        //response.Content = details["Response"].ToString();
+                        JsonSerializerSettings settings = new JsonSerializerSettings();
+                        settings.NullValueHandling = NullValueHandling.Ignore;
+                        //projectUsers = JsonConvert.DeserializeObject<List<ProjectGetUser>>(response.Content);
+                        projectUsers = JsonConvert.DeserializeObject<List<ProjectGetUser>>(details["results"].ToString());
+                        result.AddRange(projectUsers);
+                        offset += limit;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex);
+                    throw ex;
+                }
+            }
+            //FUTURE:  really should try to use the nextUrl from the pagination section of the response
+            while (projectUsers != null && projectUsers.Count == limit);
 
             return response;
         }

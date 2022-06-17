@@ -27,7 +27,8 @@ namespace Autodesk.Forge.BIM360.Serialization
     public class Phone
     {
         public string Number { get; set; }
-        public int PhoneType { get; set; }
+        //public int PhoneType { get; set; }
+        public string PhoneType { get; set; }
         public string Extension { get; set; }
     }
 }

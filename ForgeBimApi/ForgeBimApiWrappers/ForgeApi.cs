@@ -112,6 +112,9 @@ namespace Autodesk.Forge.BIM360
             Urls["projects"] = "hq/v1/" + regionBasedUrl + "accounts/{AccountId}/projects";
             Urls["projects_projectId"] = "hq/v1/" + regionBasedUrl + "accounts/{AccountId}/projects/{ProjectId}";
             Urls["projects_projectId_users"] = "hq/v1/" + regionBasedUrl + "accounts/{AccountId}/projects/{ProjectId}/users";
+            //Documentation shows get project users is incorrect
+            //https://forge.autodesk.com/en/docs/bim360/v1/reference/http/admin-v1-projects-projectId-users-GET/
+            Urls["projects_projectId_getusers"] = "bim360/admin/v1/" + regionBasedUrl + "projects/{ProjectId}/users";
             Urls["projects_projectId_users_import"] = "hq/v2/" + regionBasedUrl + "accounts/{AccountId}/projects/{ProjectId}/users/import";
             Urls["projects_projectId_user_patch"] = "hq/v2/" + regionBasedUrl + "accounts/{AccountId}/projects/{ProjectId}/users/{UserId}";
             Urls["projects_projectId_industryRoles"] = "hq/v2/" + regionBasedUrl + "accounts/{AccountId}/projects/{ProjectId}/industry_roles";
@@ -119,6 +122,7 @@ namespace Autodesk.Forge.BIM360
             Urls["companies_import"] = "hq/v1/" + regionBasedUrl + "accounts/{AccountId}/companies/import";
             Urls["users"] = "hq/v1/" + regionBasedUrl + "accounts/{AccountId}/users";
             Urls["users_import"] = "hq/v1/" + regionBasedUrl + "accounts/{AccountId}/users/import";
+            Urls["users_patch"] = "hq/v1/" + regionBasedUrl + "accounts/{AccountId}/users/{UserId}";
             Urls["businessUnitsStructure"] = "hq/v1/" + regionBasedUrl + "accounts/{AccountId}/business_units_structure";
             Urls["folders_folder_contents"] = "data/v1/projects/{ProjectId}/folders/{FolderId}/contents";
             Urls["hubs"] = "project/v1/hubs";
