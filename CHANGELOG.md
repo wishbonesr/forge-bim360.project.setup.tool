@@ -21,3 +21,13 @@
 Accept pull request from Joe Fields, thanks to Joe.
 - Please check the details at https://github.com/Autodesk-Forge/forge-bim360.project.setup.tool/pull/5
 
+## Improve Date: 2022-07-12
+- Support adding Account Users - requires account admin switch (code was partially present)
+- Support adding Account Users in batches of 50 if greater
+- Fix modifying Account Users active/inactive (response was incompatible with hquser)
+- Support Exporting Project Users - command line switches changed to differentiate project and account users
+- Support Exporting All Projects, rather than only select list
+- Exports are no longer random, rather overwrite.
+- Fix handling of API's that output ISO 8601 datetime while other API's are string datetime
+- Fix GetStringOrNull handles null objects
+- Added more logging
